@@ -4,7 +4,7 @@
 ### CASALUX NP-LSRC-01FE
 IR receiver sits in the base<br>
 **Protocoll**: NEC<br>
-**Adress**: 0xEF00<br>
+**Address**: 0xEF00<br>
 
 | Function      | IR Code |
 |---------------|---------|
