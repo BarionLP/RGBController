@@ -1,5 +1,5 @@
 ﻿using System.IO.Ports;
-using Ametrin.Utils;
+using NAudio.Wave;
 using RGBController.Core;
 
 var port = new SerialPort("COM3"){
@@ -34,15 +34,38 @@ List<byte> Rainbow = [
     CasaluxColumn.Colors.MAGENTA,
 ];
 
+var rainbow = new RandomInfinteIterator<byte>(Rainbow);
+
+var capture = new WasapiLoopbackCapture();
+var beatDetector = new BeatDetector();
+capture.DataAvailable += OnDataAvailable;
+beatDetector.OnBeatDetected += ()=>{
+    rainbow.MoveNext();
+    controller.SendCommand(rainbow.Current);
+    //Console.WriteLine("Beat");
+};
+capture.StartRecording();
+
 controller.SendCommand(CasaluxColumn.Commands.TOGGLE_ON_OFF);
 
-while(true){
-    if(Console.KeyAvailable) break;
-    controller.SendCommand(Rainbow.GetRandomElement());
-    await Task.Delay(561);
-}
+Console.ReadKey();
 
 controller.SendCommand(CasaluxColumn.Commands.TOGGLE_ON_OFF);
-
+capture.StopRecording();
 port.Close();
 port.Dispose();
+
+void OnDataAvailable(object? sender, WaveInEventArgs e){
+    var buffer = ConvertToFloat(e.Buffer, e.BytesRecorded);
+    beatDetector.ProcessData(buffer);
+
+    static float[] ConvertToFloat(byte[] buffer, int bytesRecorded){
+        var samplesRecorded = bytesRecorded / 4; // 32-bit float samples
+        var floatBuffer = new float[samplesRecorded];
+        for (int index = 0, floatIndex = 0; index < bytesRecorded; index += 4, floatIndex++)
+        {
+            floatBuffer[floatIndex] = BitConverter.ToSingle(buffer, index);
+        }
+        return floatBuffer;
+    }
+}
